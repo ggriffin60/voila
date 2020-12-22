@@ -1,0 +1,4 @@
+"0",""
+"0","varnames15<-labels(All2015)[[2]]   # reading list of variables (i.e. column names)"
+"2","Error in labels(All2015) : object 'All2015' not found
+"

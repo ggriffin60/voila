@@ -1,0 +1,456 @@
+---
+title: "Happiness, Economy and the link to Suicide?"
+author: "Gearoid Griffin"
+date: "23/11/2020"
+output:
+  prettydoc::html_pretty:
+    theme: hpstr
+runtime: shiny
+---
+## Should we take notice of the World Happiness Report?
+
+For this assignment I took a while in trying to decide what would be an interesting topic to delve into. I spent hours looking at datasets online, primarily on Kaggle and I was a little overwhelmed by the multitude.
+Finally, I came upon the World Happiness Report, a report first published by the United Nations in 2012.  
+Using the data provided by this report from 2015 to 2019, I decided to explore the links, if any, between happiness, strong economies and suicide.
+I understand how morose the topic is, however I felt that it would be interesting to see whether that the stability and prosperity that a strong economy provides might also be marked by a tragic element.
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.pos = "!H", out.extra = "")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# load required libraries and data
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(caTools)
+library(ggplot2)
+library(ggthemes)
+library(reshape2)
+library(data.table)
+library(tidyr)
+library(corrgram)       
+library(corrplot)
+library(formattable)
+library(cowplot)
+library(ggpubr)
+library(plot3D)
+library(shiny)
+library(stargazer)
+library(gridExtra)
+library(grid)
+library(lattice)
+library(countrycode)
+library(rworldmap)
+library(wesanderson)
+library(shinythemes)
+library(rmarkdown)
+library(prettydoc)
+library(EnvStats)
+
+All2015 <-  read.csv(file = "2015.csv")  #reading CSV files 
+All2016 <-  read.csv(file = "2016.csv")  #reading CSV files 
+All2017 <-  read.csv(file = "2017.csv")  #reading CSV files 
+All2018 <-  read.csv(file = "2018.csv") 
+All2019 <-  read.csv(file = "2019.csv")
+Countries <- read.csv(file = "countries_aggregated.csv")
+suicide <- read.csv(file = "suicide.csv")
+```
+
+## Who is happiest?
+
+Initially, I wanted to see which countries are ranked as happiest. So, using ggplot and grid.arrange(), I created a simple histogram which ranked each country based on their "Happiness Score".
+We can see that the Scandinavian countries are populating the "top 10" consistently which for me seemed unusual considering both the climate and daytime sunlight deprivation during the winter months.
+However, Denmark, Norway, Finland and Sweden are all progressive democratic-socialist states which appear conscientious of the citizens that they govern, with higher standards of living and little disparity between incomes. Their citizens enjoy free education, free healthcare and guaranteed pension payments for when they retire.
+```{r, echo=FALSE, fig.width=10, fig.cap="Figure:This is just my run of the mill histogram."}
+
+# Lets try and find the countries which rank in the top 10
+top10_2015 <- All2015 %>% select(Country, Happiness.Rank, Happiness.Score) %>% head(n=10)
+top10_2016 <- All2016 %>% select(Country, Happiness.Rank, Happiness.Score) %>% head(n=10)
+top10_2017 <- All2017 %>% select(Country, Happiness.Rank, Happiness.Score) %>% head(n=10)
+
+g1 <- ggplot(top10_2015, aes(x=factor(Country, levels = Country), y = Happiness.Rank)) + geom_col(
+width = 0.5, fill="navyblue") + theme(axis.text.x = element_text(angle = 90, vjust = 0.6)) + labs(title = "Top10 Happiest - 2015", x="Country",y="Rank")
+
+g2 <- ggplot(top10_2016, aes(x=factor(Country, levels = Country), y = Happiness.Rank)) + geom_col(
+  width = 0.5, fill="darkred") + theme(axis.text.x = element_text(angle = 90, vjust = 0.6)) + labs(title = "Top10 Happiest - 2016", x="Country",y="Rank")
+
+g3 <- ggplot(top10_2017, aes(x=factor(Country, levels = Country), y = Happiness.Rank)) + geom_col(
+  width = 0.5, fill="limegreen") + theme(axis.text.x = element_text(angle = 90, vjust = 0.6)) + labs(title = "Top10 Happiest - 2017", x="Country",y="Rank")
+
+grid.arrange(g1,g2,g3,ncol=3,nrow=1)
+                                                                                                            
+```
+
+## What makes us happy? - Correlation Plot + World Maps
+
+Next, I wanted to get an idea as to what makes us happy or at least points to happiness. Using the corrplot package I created a simple correlation plot using the numerical variables from the 2015 data-set. Now I'm sure what makes us happy from year to year may change but for illustration purposes I used one year's data-set. 
+
+And it seems that the greatest correlations to happiness are; a strong economy (rated by GDP), family ties and life expectancy. No surprise, that the countries within the "top10" are either universal or low-cost healthcare systems which are heavily subsidised by their governments. As well as this, many of these countries offer payed maternity and paternity leave.
+
+An important point to note is that the "Happiness Rank" is inversely correlated to the "Happiness Score", meaning the happier the nation, the lower the score. It adds nothing to the plot besides colour, however I felt a sense of propriety in leaving it in. Also, I removed the "Standard Error" column.
+
+
+```{r, echo=FALSE, fig.cap="Figure:great respects must be paid to the Wes-Anderson colour-palette for this plot."}
+br()
+br()
+# lets see if there is any correlation between the numerical variables in the 2015 dataset
+cp2 <- wes_palette("Zissou1", 144, type = "continuous")
+
+corr_2015 <- All2015[,-c(5)] # remove standard error
+Num.cols <- sapply(corr_2015, is.numeric)
+Cor.data <- cor(corr_2015[,Num.cols])
+
+corrplot(Cor.data, 
+method='color',
+col = cp2)
+br()
+br()
+```
+With the help of the World Map package and data from the World Happiness Report, it is clear which countries benefit from high GDPs and therefore can be deemed as strong international economies.
+
+I was hoping to integrate these world maps into my shiny app below so that a user could simply click on a country on the map and mark it for selection. However, due to time constraints and lack of technical skill, I had awful difficulty.
+
+My goal was to have a side panel with a world map whereby the user would select a country and this country was then highlighted for comparison with other countries that could be clicked on. Then, in the main panel, I was hoping to have a separate tab panel for both scatter-plots and histograms of the selected countries.
+
+Unfortunately, possibly due to poor design I could only come up with an app that could create comparisons across the years using only histograms. But once I realised what I had gotten myself into, I carried down the easier path even though it seems less enlightening than the other plots.
+
+
+
+```{r, echo=FALSE, results='hide'}
+#compare GDP per capita of countries in year 2015 and 2016
+
+#2015
+cp1 = wesanderson::wes_palette("Royal2",9, type = "continuous") 
+  
+d <- data.frame(country=All2015$Country, value=All2015$Economy..GDP.per.Capita.)
+
+n <- joinCountryData2Map(d, joinCode = "NAME", nameJoinColumn = "country")
+mapCountryData(n, 
+nameColumnToPlot = "value", 
+mapTitle = "World Map for GDP per capita-2015", 
+colourPalette = cp1,
+oceanCol = "lightblue",
+missingCountryCol = "grey65",
+catMethod = "pretty")
+
+
+#2016
+d1 <- data.frame(country=All2016$Country, value=All2016$Economy..GDP.per.Capita.)
+
+n1 <- joinCountryData2Map(d, joinCode = "NAME", nameJoinColumn = "country")
+
+mapCountryData(n,
+nameColumnToPlot = "value", 
+mapTitle = "World Map for GDP per capita-2016", 
+colourPalette = cp1,
+oceanCol = "lightblue",
+missingCountryCol = "grey65",
+catMethod = "pretty")
+
+
+```
+
+
+
+## Shiny App
+```{r, echo=FALSE, fig.height=10, fig.width=10}
+
+varnames15<-labels(All2015)[[2]]   # reading list of variables (i.e. column names)
+varnames15<-varnames15[-c(1,2)]    #removing first two elements from the list of names
+varnames16<-labels(All2016)[[2]]   # reading list of variables
+varnames16<-varnames16[-c(1,2)]    #removing first two elements from the list of names
+varnames17<-labels(All2017)[[2]]   # reading list of variables
+varnames17<-varnames17[-1]          #removing first element from the list of names
+varnames18<-labels(All2018)[[2]]   # reading list of variables
+varnames18<-varnames18[-2]         #removing second element from the list of names
+varnames19<-labels(All2019)[[2]]   # reading list of variables
+varnames19<-varnames19[-2]          #removing second element from the list of names
+
+ui <- fluidPage(
+  theme = shinytheme("cyborg"),
+  titlePanel("World Happiness Report"),
+  sidebarLayout(       #defines what style of interactive page will be - with the sidebar
+    # Application title
+    sidebarPanel(       # starts what will be on the left side panel 
+      tags$hr(),        # horizontal line  
+      helpText("Please choose the countries you would like to compare: "),    #text 
+      
+      selectInput("countr",      #interactive variable, which will be used by server.R code to manipulate data
+                  label="Countries",       # text, which defines, what here we are choosing countries to visualize
+                  All2015$Country,        # list of all the countries, a vector from data.frame
+                  selected = NULL,        # no countries are preselected - empty 
+                  multiple = TRUE,          # multiple countries can be selected
+                  selectize = TRUE,       # using .js plugin 
+                  width = NULL,          
+                  size = NULL
+      ),
+      tags$hr(),      # one more line 
+    ),
+    
+    mainPanel(          # starts the main panel 
+      tabsetPanel(type = "tabs",     # style to have tabs for different years 
+                  
+                  
+                  tabPanel("2015",    # first tab starts for year 2015  
+                           selectInput("variab15",        # selection of the variable to be used for plotting 
+                                       label="Variable to plot",    #plot label 
+                                       varnames15,           # vector from server.r with names of variables 
+                                       selected = NULL,
+                                       multiple = FALSE,      #only one variable can be selected 
+                                       selectize = TRUE,
+                                       width = NULL,
+                                       size = NULL
+                           ),
+                           plotOutput("plot15")        # plotting "plot15" from server.R
+                  ),   #end one tab
+                  tabPanel("2016",
+                           selectInput("variab16",
+                                       label="Variable to plot",
+                                       varnames16,
+                                       selected = NULL,
+                                       multiple = FALSE,
+                                       selectize = TRUE,
+                                       width = NULL,
+                                       size = NULL
+                           ),
+                           plotOutput("plot16")     #plotting "plot16" from server.R
+                  ),  #end one tab
+                  tabPanel("2017",
+                           selectInput("variab17",
+                                       label="Variable to plot",
+                                       varnames17,
+                                       selected = NULL,
+                                       multiple = FALSE,
+                                       selectize = TRUE,
+                                       width = NULL,
+                                       size = NULL
+                           ),
+                           plotOutput("plot17") 
+                  ),  #end one tab
+                  tabPanel("2018",
+                           selectInput("variab18",
+                                       label="Variable to plot",
+                                       varnames18,
+                                       selected = NULL,
+                                       multiple = FALSE,
+                                       selectize = TRUE,
+                                       width = NULL,
+                                       size = NULL
+                           ),
+                           plotOutput("plot18") 
+                  ),  #end one tab
+                  tabPanel("2019",
+                           selectInput("variab19",
+                                       label="Variable to plot",
+                                       varnames19,
+                                       selected = NULL,
+                                       multiple = FALSE,
+                                       selectize = TRUE,
+                                       width = NULL,
+                                       size = NULL
+                           ),
+                           plotOutput("plot19") 
+                  )  #end one tab
+      )
+    )
+  )
+)
+
+
+
+server<-function(input, output) {     #Start  interactive Server session
+  
+  output$plot15 <- renderPlot({  #comments are below 
+      ggplot(All2015, aes(x=Country, y=(!!as.name(input$variab15))))+ 
+      geom_bar(data=subset(All2015,Country %in% (input$countr)), stat = "Identity")+
+      theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+    
+  })
+  output$plot16 <- renderPlot({
+      ggplot(All2016, aes(x=Country, y=(!!as.name(input$variab16))))+ 
+      geom_bar(data=subset(All2016,Country %in% (input$countr)), stat = "Identity")+
+      theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+    
+  })
+  output$plot17 <- renderPlot({
+      ggplot(All2017, aes(x=Country, y=(!!as.name(input$variab17))))+ 
+      geom_bar(data=subset(All2017,Country %in% (input$countr)), stat = "Identity")+
+      theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+   
+  })
+  output$plot18 <- renderPlot({
+      ggplot(All2018, aes(x=Country.or.region, y=(!!as.name(input$variab18))))+ 
+      geom_bar(data=subset(All2018,Country.or.region %in% (input$countr)), stat = "Identity")+
+      theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+    
+    
+  })
+  output$plot19 <- renderPlot({
+      ggplot(All2019, aes(x=Country.or.region, y=(!!as.name(input$variab19))))+ 
+      geom_bar(data=subset(All2019,Country.or.region %in% (input$countr)), stat = "Identity")+
+      theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+    
+  })
+  options = list(height=400)
+  
+}
+# Run the app ----
+shinyApp(ui = ui, server = server)
+br()
+br()
+
+```
+
+## Shiny App (and the search for inspiration...)
+
+The bulk of my time was involved in trying to develop this Shiny app. In my mind, the assignment was; create a Shiny app that highlighted your data-set. In reality the assignment was; use a visualisation method to present an analysis which you used to identify a goal or solve a problem with.
+
+In truth these things hadn't entered my head until I had finished the app and realised that the app only created more questions than answers.
+
+However, as I was tinkering around with the app, I wondered whether there was any significant correlation between GDP and the opposite of happiness, which I guess could be classed as despair. And even though I understand there are numerous factors which result in a person dying by suicide, I was intrigued to find out whether GDP correlated to suicide rates in the wealthier nations.
+
+This question required a secondary data-set with suicide rates over a significant period of time. For this, I downloaded a compiled data-set which was made up of separate datasets, linked by place and time. This data-set includes data collected by:
+
+- United Development Program (2018). Human development index (HDI)
+- World Bank (2018). World development indicators: GDP(current US$) by country:1985 to 2016
+- World Health Organization (2018). Suicide Prevention
+
+
+## Suicide Rates across the World
+
+Below I created geographical heat-map using the World Map package. The only hiccup I had with this data-set was that it was quite specific. I only wanted a number for the suicide rate per 100k population. However, this data-set was divided between male and female and across age groups (15-24, 25-34, 35-54, 55-74, 75+). Therefore, when creating the heat-map, I had to group-by country and calculate : 
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+
+ summarize(suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000)
+
+</div>
+
+
+
+
+```{r, echo=FALSE, results='hide'}
+# heat map for suicides
+
+suicide <- suicide %>%
+  rename(country = "ï..country")
+
+suicide$continent <- countrycode(sourcevar = suicide[,"country"],
+                                 origin = "country.name",
+                                 destination = "continent")
+
+
+
+#2015
+cp = wesanderson::wes_palette("GrandBudapest1",9, type = "continuous")
+
+country <- suicide%>%
+  group_by(country) %>%
+  summarize(suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000)
+
+countrydata <- joinCountryData2Map(country, joinCode = "NAME", nameJoinColumn = "country")
+
+mapCountryData(countrydata,
+nameColumnToPlot = "suicide_per_100k",
+mapTitle = "Suicide per 100k of Population per Year",
+colourPalette = cp,
+oceanCol = "lightblue",
+missingCountryCol = "grey65",
+catMethod = "pretty")
+
+```
+Unfortunately, as highlighted by the grey areas, there is a significant lack of information for large chunks of the map including Africa and Asia.
+
+Another cause of concern with this data-set, as with any data-set, is its reliability. I suppose when taking on data like this we have to question whether the death was classified correctly as suicide, and also to be aware  that the classification of suicide across countries can vary.
+
+
+## Is there a link between a country's economy and suicide rates?
+
+Finally, I wanted to clearly illustrate whether there existed any correlation between GDP and suicide. In order to carry this out I needed to get a mean GDP across the time period of the data-set, grouping it by country and continent, thus creating a new data-set: 
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+
+country_mean_gdp <- suicide%>%
+  group_by(country, continent)%>%
+  summarize(suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000,
+            gdp_per_capita = mean(gdp_per_capita....))
+
+</div>
+
+Adding a line of best fit does show a weak but clear linear relationship between GDP and suicide, suicide rates increase steadily with increasing GDP.. 
+```{r, echo=FALSE, results='hide'}
+
+country_mean_gdp <- suicide%>%
+  group_by(country, continent)%>%
+  summarize(suicide_per_100k = (sum(as.numeric(suicides_no)) / sum(as.numeric(population))) * 100000,
+            gdp_per_capita = mean(gdp_per_capita....))
+
+ggplot(country_mean_gdp, aes(x = gdp_per_capita, y = suicide_per_100k, col=continent)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(group=1)) + 
+  labs(title = "Correlation between GDP (per capita) and Suicides per 100k",
+       subtitle = "Plot containing every country",
+       x="GDP (per capita)",
+       y = "Suicides per 100k",
+       col = "Continent")
+br()
+br()
+```
+
+
+However, we can see in the top left hand side that Lithuania may impact the regression line significantly as an outlier. Using the EnvStats package I carried out a Rosner test to establish whether Lithuania was indeed my only outlier.
+
+The Rosner Test is similar in purpose to a Grubb's Test, but it can be used to detect several outliers at once and is more suitable for sample sizes greater than 20. In this instance I set the k-value (number of suspected outliers) to 3. 
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+
+checkOutlier <- rosnerTest(country_mean_gdp $ suicide_per_100k, k=3)
+checkOutlier$all.stats
+
+
+</div>
+
+````{r, echo=FALSE}
+
+# use rosner test to check for outliers
+# library(EnvStats)  
+checkOutlier <- rosnerTest(country_mean_gdp$suicide_per_100k, k=3)
+
+# since the bulk of the data is towards the left of diagram, a number of outliers exist
+checkOutlier$all.stats
+```
+From the result it was clear that Lithuania was indeed my only outlier, so I removed it and set my line of best fit again.
+```{r, echo=FALSE, results='hide'}
+remove_outlier <- country_mean_gdp[country_mean_gdp$suicide_per_100k<40,]
+
+
+s_model2 <- lm(suicide_per_100k ~ gdp_per_capita, data = remove_outlier)
+
+summary(s_model2)
+
+
+ggplot(remove_outlier, aes(x = gdp_per_capita, y = suicide_per_100k, col=continent)) +
+  geom_point() +
+  geom_smooth(method = "lm", aes(group=1)) + 
+  labs(title = "Correlation between GDP (per capita) and Suicides per 100k",
+       subtitle = "Plot containing every country except Lithuania",
+       x="GDP (per capita)",
+       y = "Suicides per 100k",
+       col = "Continent")
+````
+
+## Summary
+
+From the outset of this project I was probably more curious about the nature of happiness and how it may be predicted by the use of visualisations and modelling, rather than suicide. I can see that improvements in a country's economomy, stable government, a universal healthcare system and a host of other factors may benefit a society and improve the general well-being of it's citizens. However the allayment of society's fears and ills, by removing starvation, increasing life-expectancy and making people feel safe, will not necessarily remove the negative emotions that people feel such as, fear, doubt, anger, dispair and distrust. 
+
+Perspective is possibly key in explaining the link between increased GDP and suicide rates. Even though a nation may now no longer be without, this rises the citizens expectations rather than allays all their fears. The rise in isolation of growing cities, the distrust between disjointed communities and the pressures associated with a prospering economy can all be seen as contributing factors to this unfortunate correlation.

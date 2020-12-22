@@ -1,0 +1,6 @@
+web: voila --port=$PORT --no-browser --enable_nbextensions=True
+COVID_UPLOAD.ipynb
+covid19Jup.png
+world_coordinates.csv
+download
+requirements.txt
