@@ -1,20 +1,11 @@
-
-
-from __future__ import print_function
-from ipywidgets import interact, interactive, fixed, interact_manual
-from IPython.core.display import display, HTML
-
-numpy
-pandas
-matplotlib.pyplot
-plotly.express
-folium
-plotly.graph_objects
-seaborn 
-ipywidgets
+  
 voila
-plotly.graph_objects
-from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score,silhouette_samples
-std=StandardScaler()
+voila-material
+pandas
+ipywidgets
+seaborn
+plotly
+folium
+matplotlib
+numpy
+sklearn
